@@ -1,0 +1,594 @@
+<div class="container component" data-component-id="{{ componentId }}">
+  <section class="x-status" id="saph-status">
+    <span class="x-scan"></span>
+    <span class="x-grid"></span>
+
+    <div class="x-status-head">
+      <div class="x-head-left">
+        <h1 class="x-title"><span class="x-em">Live</span> Product Status</h1>
+        <p class="x-sub">Realtime overview of all products. Click a legend tag to filter.</p>
+      </div>
+
+      <div class="x-head-right">
+        <div class="x-legend" id="legend">
+          <button type="button" class="x-tag is-on" data-filter="operational">
+            <span class="dot" style="--c:#10d98d"></span> Operational
+          </button>
+          <button type="button" class="x-tag is-on" data-filter="maintanance">
+            <span class="dot" style="--c:#ffb020"></span> Maintanance
+          </button>
+          <button type="button" class="x-tag is-on" data-filter="detected">
+            <span class="dot" style="--c:#ff4d4d"></span> Detected
+          </button>
+          <button type="button" class="x-tag is-on" data-filter="discontinued">
+            <span class="dot" style="--c:#ff8a00"></span> Discontinued
+          </button>
+          <button type="button" class="x-tag is-on" data-filter="unknown">
+            <span class="dot" style="--c:#9aa4b2"></span> Unknown
+          </button>
+        </div>
+
+        <div class="x-tools">
+          <div class="x-input">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M21 21l-4.3-4.3m1.3-5A7 7 0 1 1 5 5a7 7 0 0 1 13 6.7Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <input id="statusSearch" type="search" placeholder="Search product…" autocomplete="off">
+          </div>
+          <button class="x-refresh" onclick="location.reload()">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path d="M4 4v6h6M20 20v-6h-6M20 8A8 8 0 0 0 7.7 6.7M4 16A8 8 0 0 0 16.3 17.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="x-groups" id="statusGroups">
+      {% for item in sortedItems %}
+        {% if item.type == 'group' %}
+          <section class="x-group" data-group>
+            <header class="x-group-head"><h2>{{ item.name }}</h2></header>
+            <div class="x-cards">
+              {% for p in item.products %}
+                {% set raw = (p.status_text | default('') | lower | trim) %}
+                {% set status_slug = raw in ['operational','maintanance','detected','discontinued'] and raw or 'unknown' %}
+                {% set stcolor = p.status_color %}
+                {% if not stcolor %}
+                  {% if status_slug == 'operational' %}{% set stcolor = '#10d98d' %}
+                  {% elseif status_slug == 'maintanance' %}{% set stcolor = '#ffb020' %}
+                  {% elseif status_slug == 'detected' %}{% set stcolor = '#ff4d4d' %}
+                  {% elseif status_slug == 'discontinued' %}{% set stcolor = '#ff8a00' %}
+                  {% else %}{% set stcolor = '#9aa4b2' %}{% endif %}
+                {% endif %}
+
+                {% set rawSlug = p.slug or p.handle or p.permalink or p.seo_url %}
+                {% if not rawSlug %}
+                  {% set rawSlug = ((p.path or p.name | default('')) | lower
+                    | replace(' ', '-') | replace('/', '-') | replace('.', '')
+                    | replace('&','and')) %}
+                {% endif %}
+                {% set href = ('/product/' ~ rawSlug) | shopUrl %}
+
+                <div class="x-card" data-status="{{ status_slug }}" style="--st: {{ stcolor }};">
+                  <div class="x-card-main">
+                    <div class="x-name">
+                      <span class="x-label">{{ p.name }}</span>
+                      {% if p.subtitle %}<span class="x-subtle">{{ p.subtitle }}</span>{% endif %}
+                    </div>
+                    <div class="x-pill">
+                      <span class="dot"></span>
+                      <span class="txt">{{ p.status_text | default('Unknown') }}</span>
+                    </div>
+                  </div>
+                  <div class="x-meta">
+                    <a href="{{ href }}" class="x-price">Buy Now</a>
+                  </div>
+                  <span class="x-glow" aria-hidden="true"></span>
+                  <span class="x-border" aria-hidden="true"></span>
+                </div>
+              {% endfor %}
+            </div>
+          </section>
+
+        {% elseif not item.group_id %}
+          {% set raw = (item.status_text | default('') | lower | trim) %}
+          {% set status_slug = raw in ['operational','maintanance','detected','discontinued'] and raw or 'unknown' %}
+          {% set stcolor = item.status_color %}
+          {% if not stcolor %}
+            {% if status_slug == 'operational' %}{% set stcolor = '#10d98d' %}
+            {% elseif status_slug == 'maintanance' %}{% set stcolor = '#ffb020' %}
+            {% elseif status_slug == 'detected' %}{% set stcolor = '#ff4d4d' %}
+            {% elseif status_slug == 'discontinued' %}{% set stcolor = '#ff8a00' %}
+            {% else %}{% set stcolor = '#9aa4b2' %}{% endif %}
+          {% endif %}
+
+          {% set rawSlug = item.slug or item.handle or item.permalink or item.seo_url %}
+          {% if not rawSlug %}
+            {% set rawSlug = ((item.path or item.name | default('')) | lower
+              | replace(' ', '-') | replace('/', '-') | replace('.', '')
+              | replace('&','and')) %}
+          {% endif %}
+          {% set href = ('/product/' ~ rawSlug) | shopUrl %}
+
+          <section class="x-group" data-group>
+            <div class="x-cards">
+              <div class="x-card" data-status="{{ status_slug }}" style="--st: {{ stcolor }};">
+                <div class="x-card-main">
+                  <div class="x-name"><span class="x-label">{{ item.name }}</span></div>
+                  <div class="x-pill"><span class="dot"></span><span class="txt">{{ item.status_text | default('Unknown') }}</span></div>
+                </div>
+                <div class="x-meta">
+                  <a href="{{ href }}" class="x-price">Buy Now</a>
+                </div>
+                <span class="x-glow" aria-hidden="true"></span>
+                <span class="x-border" aria-hidden="true"></span>
+              </div>
+            </div>
+          </section>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <script>
+      (function () {
+        const q = document.getElementById('statusSearch');
+        const groups = [...document.querySelectorAll('#statusGroups [data-group]')];
+        const legend = document.getElementById('legend');
+
+        let activeFilters = new Set(
+          [...legend.querySelectorAll('.x-tag.is-on')].map(b => b.dataset.filter)
+        );
+
+        function applyFilters() {
+          const query = (q && q.value || '').trim().toLowerCase();
+          groups.forEach(g => {
+            const cards = [...g.querySelectorAll('.x-card')];
+            let visible = 0;
+            cards.forEach(c => {
+              const name = (c.querySelector('.x-label')?.textContent || '').toLowerCase();
+              const status = (c.dataset.status || '').replace(/-/g, '');
+              const okText = !query || name.includes(query);
+              const okStatus = activeFilters.size === 0 || activeFilters.has(status);
+              const show = okText && okStatus;
+              c.style.display = show ? '' : 'none';
+              if (show) visible++;
+            });
+            g.style.display = visible ? '' : 'none';
+          });
+        }
+
+        q && q.addEventListener('input', applyFilters);
+
+        legend && legend.addEventListener('click', (e) => {
+          const btn = e.target.closest('.x-tag'); if (!btn) return;
+          btn.classList.toggle('is-on');
+          const key = btn.dataset.filter;
+          if (btn.classList.contains('is-on')) activeFilters.add(key);
+          else activeFilters.delete(key);
+          applyFilters();
+        });
+
+        applyFilters();
+      })();
+    </script>
+  </section>
+</div>
+<style>
+:root {
+  --saph-primary: #ff00ff;
+  --saph-primary-hover: #aa1aff;
+  --saph-bg: #0a0a0f;
+  --saph-surface: #000000;
+  --saph-border: rgba(255, 255, 255, 0.08);
+  --saph-text: #e9eef5;
+  --saph-muted: #9aa4b2;
+}
+
+.container {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+#saph-status {
+  position: relative;
+  background: transparent;
+  border: 1px solid var(--saph-border);
+  border-radius: 16px;
+  padding: clamp(20px, 3vw, 32px);
+  margin: clamp(28px, 5vw, 64px) auto;
+  margin-top: 120px;
+  max-width: 1560px;
+  width: calc(100% - 40px);
+}
+
+/* Header */
+#saph-status .x-status-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: clamp(20px, 3vw, 28px);
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--saph-border);
+}
+
+#saph-status .x-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--saph-text);
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  letter-spacing: -0.02em;
+}
+
+#saph-status .x-em {
+  color: var(--saph-primary);
+}
+
+#saph-status .x-sub {
+  color: var(--saph-muted);
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+}
+
+#saph-status .x-head-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Legend Filters */
+#saph-status .x-legend {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#saph-status .x-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--saph-text);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--saph-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#saph-status .x-tag .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.85);
+  }
+}
+
+#saph-status .x-tag:not(.is-on) {
+  opacity: 0.4;
+}
+
+#saph-status .x-tag:not(.is-on) .dot {
+  animation: none;
+}
+
+#saph-status .x-tag:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+#saph-status .x-tag.is-on {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Tools */
+#saph-status .x-tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+#saph-status .x-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--saph-border);
+  color: var(--saph-muted);
+  transition: all 0.2s ease;
+}
+
+#saph-status .x-input:focus-within {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+#saph-status .x-input svg {
+  flex-shrink: 0;
+}
+
+#saph-status .x-input input {
+  background: transparent;
+  border: 0;
+  color: var(--saph-text);
+  outline: 0;
+  width: 180px;
+  font-size: 0.95rem;
+}
+
+#saph-status .x-input input::placeholder {
+  color: var(--saph-muted);
+}
+
+#saph-status .x-refresh {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #fff;
+  background: var(--saph-primary);
+  border: 1px solid var(--saph-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#saph-status .x-refresh:hover {
+  background: var(--saph-primary-hover);
+  transform: translateY(-1px);
+}
+
+#saph-status .x-refresh:active {
+  transform: translateY(0);
+}
+
+/* Groups */
+#saph-status .x-group {
+  margin-top: 24px;
+}
+
+#saph-status .x-group-head h2 {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--saph-muted);
+}
+
+#saph-status .x-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Cards - Full Width */
+#saph-status .x-card {
+  --st: #9aa4b2;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  text-decoration: none;
+  padding: 20px 24px;
+  border-radius: 12px;
+  color: var(--saph-text);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--saph-border);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+#saph-status .x-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+#saph-status .x-card-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+  min-width: 0;
+}
+
+#saph-status .x-name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+#saph-status .x-label {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--saph-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#saph-status .x-subtle {
+  color: var(--saph-muted);
+  font-size: 0.85rem;
+}
+
+#saph-status .x-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#saph-status .x-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--st);
+  flex-shrink: 0;
+  animation: pulse-status 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 var(--st);
+}
+
+@keyframes pulse-status {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 var(--st);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 8px 2px var(--st);
+  }
+}
+
+#saph-status .x-pill .txt {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--saph-text);
+}
+
+#saph-status .x-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Buy Now Button - replaces price */
+#saph-status .x-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: var(--saph-primary);
+  border: 1px solid var(--saph-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+#saph-status .x-price:hover {
+  background: var(--saph-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(153, 0, 255, 0.3);
+}
+
+#saph-status .x-price:active {
+  transform: translateY(0);
+}
+
+#saph-status .x-card:hover .x-price {
+  box-shadow: 0 4px 16px rgba(153, 0, 255, 0.4);
+}
+
+/* Hidden elements */
+#saph-status .x-glow,
+#saph-status .x-border,
+#saph-status .x-scan,
+#saph-status .x-grid {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #saph-status {
+    padding: 16px;
+  }
+
+  #saph-status .x-status-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  #saph-status .x-head-right {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  #saph-status .x-legend {
+    width: 100%;
+  }
+  
+  #saph-status .x-tools {
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  #saph-status .x-input {
+    width: 100%;
+  }
+  
+  #saph-status .x-input input {
+    width: 100%;
+  }
+  
+  #saph-status .x-refresh {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  #saph-status .x-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  #saph-status .x-card-main {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  #saph-status .x-meta {
+    width: 100%;
+  }
+
+  #saph-status .x-price {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  #saph-status .x-card-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+</style>

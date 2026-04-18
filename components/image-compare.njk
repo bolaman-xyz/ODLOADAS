@@ -1,0 +1,73 @@
+<section class="game-comparison-section component" id="{{ componentId }}" data-component-id="{{ componentId }}">
+  <div class="comparison-container">
+    <div class="sa-section-pill">{{ properties.pill_text | default('Working') | renderString }}</div>
+    <h2 class="sa-section-title">{{ properties.title | default('How it works?') | renderString }}</h2>
+    {% if properties.subtitle %}
+      <p class="sa-section-subtitle">{{ properties.subtitle | renderString }}</p>
+    {% endif %}
+
+    <div class="comparison-content">
+      <div class="comparison-labels">
+        <div class="label-left">{{ properties.label_left | default('Non Cheat') | renderString }}</div>
+        <div class="label-right">{{ properties.label_right | default('With Cheat') | renderString }}</div>
+      </div>
+      {% if properties.image_left and properties.image_right %}
+      <div class="comparison-slider-container">
+        <div class="comparison-slider" data-sa-compare>
+          <div class="slider-handle">
+            <div class="slider-glow-left"></div>
+            <div class="slider-glow-right"></div>
+            <div class="slider-handle-button"><i class="fa-solid fa-ellipsis-vertical"></i></div>
+          </div>
+
+          <div class="comparison-image-before">
+            <img src="{{ properties.image_left | imageUrl }}" alt="Before" />
+          </div>
+          <img class="comparison-image-after" src="{{ properties.image_right | imageUrl }}" alt="After" />
+        </div>
+      </div>
+      {% else %}
+        <p class="text-center text-white-50 small mt-3">Add left and right images in theme settings.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<script>
+document.querySelectorAll('[data-sa-compare]').forEach(function (slider) {
+  const handle = slider.querySelector('.slider-handle');
+  const beforeImg = slider.querySelector('.comparison-image-before img');
+  if (!handle || !beforeImg) return;
+
+  function setPosition(x) {
+    const rect = slider.getBoundingClientRect();
+    let pos = x - rect.left;
+    if (pos < 0) pos = 0;
+    if (pos > rect.width) pos = rect.width;
+    const percent = (pos / rect.width) * 100;
+    handle.style.left = percent + '%';
+    beforeImg.style.clipPath = 'inset(0 ' + (100 - percent) + '% 0 0)';
+  }
+
+  function drag(e) {
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    setPosition(x);
+  }
+
+  slider.addEventListener('mousedown', function () {
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', function stop() {
+      document.removeEventListener('mousemove', drag);
+      document.removeEventListener('mouseup', stop);
+    });
+  });
+
+  slider.addEventListener('touchstart', function () {
+    document.addEventListener('touchmove', drag, { passive: true });
+    document.addEventListener('touchend', function stopTouch() {
+      document.removeEventListener('touchmove', drag);
+      document.removeEventListener('touchend', stopTouch);
+    });
+  });
+});
+</script>

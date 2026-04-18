@@ -1,0 +1,249 @@
+<style>
+.feedback-card {
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.01);
+  color: #a1a1aa;
+  transition: background-color 0.3s ease-in-out;
+  overflow: hidden;
+  position: relative;
+}
+
+.feedback-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.feedback-content {
+  flex: 1;
+  text-align: left;
+  padding: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.stars {
+  display: flex;
+  gap: 2px;
+}
+
+.star {
+  width: 20px;
+  height: 20px;
+}
+
+.star-filled {
+  color: #8e08ff;
+}
+
+.star-empty {
+  color: rgba(161, 161, 170, 0.5);
+}
+
+.feedback-date {
+  font-size: 12px;
+  color: rgba(161, 161, 170, 0.5);
+}
+
+.feedback-message {
+  font-size: 16px;
+  color: rgba(161, 161, 170, 0.8);
+  word-break: break-words;
+  line-height: 1.5;
+}
+
+.feedback-message.truncated {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.reply-section {
+  margin-top: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.reply-text {
+  padding-left: 8px;
+  font-size: 14px;
+  color: rgba(161, 161, 170, 0.8);
+  border-left: 2px solid #8e08ff;
+  word-break: break-words;
+  line-height: 1.4;
+}
+
+.reply-text.truncated {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.reply-author {
+  font-size: 12px;
+  text-align: right;
+  color: rgba(161, 161, 170, 0.5);
+  margin-top: 8px;
+}
+
+.shop-name {
+  color: #9900cc;
+}
+
+.feedback-footer {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: rgba(161, 161, 170, 0.7);
+  background: rgba(255, 255, 255, 0.01);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  z-index: 2;
+}
+
+.items-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-images {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.product-image {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.unknown-product-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #9900cc;
+  border-radius: 6px;
+}
+
+.product-text {
+  flex: 1;
+  color: rgba(161, 161, 170, 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+</style>
+
+<div class="feedback-card" x-data="{ expanded: false }" @click="() => { expanded = !expanded; $nextTick(() => { $dispatch('reload:masonry') }); }">
+  
+  <!-- Top Right Glow and Grid -->
+  <div style="position: absolute; z-index: 1; top: -150px; right: -120px; width: 200px; height: 250px; pointer-events: none;">
+    <svg class="card-background-glow" style="width: 200px; height: 250px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 250">
+      <defs>
+        <radialGradient id="cardGlow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+          <stop offset="0%" stop-color="#9900ff" stop-opacity="0.12" />
+          <stop offset="50%" stop-color="#9900ff" stop-opacity="0.06" />
+          <stop offset="100%" stop-color="#9900ff" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="cardGridMask" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+          <stop offset="0%" stop-color="white" stop-opacity="0.4" />
+          <stop offset="40%" stop-color="white" stop-opacity="0.2" />
+          <stop offset="70%" stop-color="white" stop-opacity="0.05" />
+          <stop offset="100%" stop-color="white" stop-opacity="0" />
+        </radialGradient>
+        <filter id="cardBlur" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
+        </filter>
+        <pattern id="cardGrid" width="15" height="15" patternUnits="userSpaceOnUse">
+          <path d="M 15 0 L 0 0 0 15" fill="none" stroke="rgba(153, 0, 255, 0.15)" stroke-width="0.6"/>
+        </pattern>
+        <mask id="cardGlowMask">
+          <rect width="100%" height="100%" fill="url(#cardGridMask)" />
+        </mask>
+      </defs>
+      <ellipse cx="100" cy="125" rx="75" ry="100" fill="url(#cardGlow)" filter="url(#cardBlur)" />
+      <rect width="100%" height="100%" fill="url(#cardGrid)" mask="url(#cardGlowMask)" />
+    </svg>
+  </div>
+
+  <div class="feedback-content">
+    <div class="feedback-header">
+      <div class="stars">
+        {% for i in range(0, feedback.rating) %}
+          <svg xmlns="http://www.w3.org/2000/svg" class="star star-filled" viewBox="0 0 24 24">
+            <path fill="currentColor" d="m12 17.275l-4.15 2.5q-.275.175-.575.15t-.525-.2t-.35-.437t-.05-.588l1.1-4.725L3.775 10.8q-.25-.225-.312-.513t.037-.562t.3-.45t.55-.225l4.85-.425l1.875-4.45q.125-.3.388-.45t.537-.15t.537.15t.388.45l1.875 4.45l4.85.425q.35.05.55.225t.3.45t.038.563t-.313.512l-3.675 3.175l1.1 4.725q.075.325-.05.588t-.35.437t-.525.2t-.575-.15z"/>
+          </svg>
+        {% endfor %}
+        {% for i in range(0, 5 - feedback.rating) %}
+          <svg xmlns="http://www.w3.org/2000/svg" class="star star-empty" viewBox="0 0 24 24">
+            <path fill="currentColor" d="m8.85 16.825l3.15-1.9l3.15 1.925l-.825-3.6l2.775-2.4l-3.65-.325l-1.45-3.4l-1.45 3.375l-3.65.325l2.775 2.425zm3.15.45l-4.15 2.5q-.275.175-.575.15t-.525-.2t-.35-.437t-.05-.588l1.1-4.725L3.775 10.8q-.25-.225-.312-.513t.037-.562t.3-.45t.55-.225l4.85-.425l1.875-4.45q.125-.3.388-.45t.537-.15t.537.15t.388.45l1.875 4.45l4.85.425q.35.05.55.225t.3.45t.038.563t-.313.512l-3.675 3.175l1.1 4.725q.075.325-.05.588t-.35.437t-.525.2t-.575-.15zm0-5.025"/>
+          </svg>
+        {% endfor %}
+      </div>
+      <span class="feedback-date">{{ feedback.created_at | formatDate }}</span>
+    </div>
+    
+    <p class="feedback-message" :class="{ 'truncated': !expanded }">
+      {{ feedback.message }}
+    </p>
+    
+    {% if feedback.reply %}
+      <div class="reply-section">
+        <p class="reply-text" :class="{ 'truncated': !expanded }">
+          {{ feedback.reply }}
+        </p>
+        <p class="reply-author">
+          Reply from <span class="shop-name">{{ shop.name }}</span> at {{ feedback.replied_at | formatDate }}
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="feedback-footer">
+    <div class="items-container">
+      {% if feedback.items|length > 0 %}
+        <div class="product-images">
+          {% for item in feedback.items.slice(0, 3) %}
+            {% if item.product.image_urls|length > 0 %}
+              <img class="product-image" src="{{ item.product.image_urls[0] }}" alt="{{ item.product.name }}">
+            {% endif %}
+          {% endfor %}
+        </div>
+        
+        <p class="product-text">
+          {{ feedback.items[0].name }}
+          {% if feedback.items.length > 1 %}
+            & {{ feedback.items.length - 1 }} more
+          {% endif %}
+        </p>
+      {% else %}
+        <div class="product-images">
+          <div class="unknown-product-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;" viewBox="0 0 256 256">
+              <path fill="currentColor" d="m222.72 67.91l-88-48.18a13.9 13.9 0 0 0-13.44 0l-88 48.18A14 14 0 0 0 26 80.18v95.64a14 14 0 0 0 7.28 12.27l88 48.18a13.92 13.92 0 0 0 13.44 0l88-48.18a14 14 0 0 0 7.28-12.27V80.18a14 14 0 0 0-7.28-12.27ZM127 30.25a2 2 0 0 1 1.92 0L212.51 76l-33.94 18.57l-84.52-46.26ZM122 223l-83-45.43a2 2 0 0 1-1-1.75V86.66l84 46ZM43.49 76l38.07-20.85l84.51 46.26L128 122.24ZM218 175.82a2 2 0 0 1-1 1.75L134 223v-90.36l36-19.71V152a6 6 0 0 0 12 0v-45.63l36-19.71Z"/>
+            </svg>
+          </div>
+        </div>
+
+        <p class="product-text">Deleted Product</p>
+      {% endif %}
+    </div>
+  </div>
+</div>

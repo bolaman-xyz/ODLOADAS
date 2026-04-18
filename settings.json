@@ -1,0 +1,354 @@
+{
+    "templates": {
+        "shop": {
+            "layout": "master",
+            "components": {
+                "hero": {
+                    "type": "hero",
+                    "properties": {
+                        "title": "Unleash Your Strength\nDominate The Game",
+                        "subtitle": "Take your gaming to the next level with our premium products, designed to redefine how you play and dominate every match.",
+                        "cta": "/products",
+                        "cta_text": "Products",
+                        "secondary_cta": "https://discord.gg/",
+                        "secondary_cta_text": "Discord",
+                        "trust_badge_text": "Trusted by 50,000+ Satisfied Customers",
+                        "show_searchbar": true,
+                        "show_feedback_rating": true,
+                        "show_products_sold": true,
+                        "show_total_customers": true,
+                        "alignment": "center",
+                        "height": "tall",
+                        "background_image": "DEFAULT",
+                        "side_image": null
+                    }
+                },
+                "image-compare-asx": {
+                    "type": "image-compare",
+                    "properties": {
+                        "pill_text": "Working",
+                        "title": "How it works?",
+                        "subtitle": "Hover over the image to see the difference between a cheat and non-cheat version.",
+                        "label_left": "Non Cheat",
+                        "label_right": "With Cheat",
+                        "image_left": null,
+                        "image_right": null
+                    }
+                },
+                "products": {
+                    "type": "products",
+                    "properties": {
+                        "pill_label": "Best Seller",
+                        "title": "Best Seller Products",
+                        "subtitle": "Products that are loved by our customers",
+                        "show_view_all": true,
+                        "ids": []
+                    }
+                },
+                "feedbacks": {
+                    "type": "feedbacks",
+                    "properties": {
+                        "title": "Reviews",
+                        "subtitle": null,
+                        "amount": 4
+                    }
+                },
+                "socials": {
+                    "type": "socials",
+                    "properties": {
+                        "title": "Follow our Socials",
+                        "subtitle": null
+                    }
+                },
+                "features-bento": {
+                    "type": "features",
+                    "properties": {
+                        "title": "Why us",
+                        "subtitle": null,
+                        "items_per_row": 3,
+                        "features": []
+                    }
+                },
+                "faq-1767460522283": {
+                    "type": "faq",
+                    "properties": {
+                        "title": "FAQ",
+                        "subtitle": null,
+                        "items": [
+                            {
+                                "question": "What is this?",
+                                "answer": "This is a FAQ item."
+                            }
+                        ],
+                        "background": "primary"
+                    }
+                }
+            },
+            "components_order": [
+                "hero",
+                "products",
+                "image-compare-asx",
+                "features-bento",
+                "socials",
+                "feedbacks",
+                "faq-1767460522283"
+            ]
+        },
+        "cart": {
+            "layout": "master",
+            "components": {
+                "cart-page": {
+                    "type": "cart-page",
+                    "properties": []
+                }
+            },
+            "components_order": [
+                "cart-page"
+            ]
+        },
+        "product": {
+            "layout": "master",
+            "components": {
+                "product-page": {
+                    "type": "product-page",
+                    "properties": {
+                        "hide_add_to_cart": false,
+                        "hide_buy_now": false
+                    }
+                }
+            },
+            "components_order": [
+                "product-page"
+            ]
+        },
+        "feedback": {
+            "layout": "master",
+            "components": {
+                "feedback-page": {
+                    "type": "feedback-page",
+                    "properties": []
+                }
+            },
+            "components_order": [
+                "feedback-page"
+            ]
+        },
+        "status": {
+            "layout": "master",
+            "components": {
+                "status-page": {
+                    "type": "status-page",
+                    "properties": []
+                }
+            },
+            "components_order": [
+                "status-page"
+            ]
+        },
+        "faq": {
+            "layout": "master",
+            "components": [],
+            "components_order": []
+        },
+        "terms": {
+            "layout": "master",
+            "components": {
+                "terms-page": {
+                    "type": "terms-page",
+                    "properties": []
+                }
+            },
+            "components_order": [
+                "terms-page"
+            ]
+        },
+        "privacy-policy": {
+            "layout": "master",
+            "components": {
+                "privacy-policy-page": {
+                    "type": "privacy-policy-page",
+                    "properties": []
+                }
+            },
+            "components_order": [
+                "privacy-policy-page"
+            ]
+        },
+        "refund-policy": {
+            "layout": "master",
+            "components": {
+                "refund-policy-page": {
+                    "type": "refund-policy-page",
+                    "properties": []
+                }
+            },
+            "components_order": [
+                "refund-policy-page"
+            ]
+        },
+        "blog": {
+            "layout": "master",
+            "components": {
+                "blog-posts": {
+                    "type": "blog-posts",
+                    "properties": {
+                        "title": "Our Blog"
+                    }
+                }
+            },
+            "components_order": [
+                "blog-posts"
+            ]
+        },
+        "blog-post": {
+            "layout": "master",
+            "components": {
+                "blog-post": {
+                    "type": "blog-post-page",
+                    "properties": []
+                }
+            },
+            "components_order": [
+                "blog-post-page"
+            ]
+        },
+        "customer-dashboard": {
+            "layout": "master",
+            "components": [],
+            "components_order": []
+        },
+        "customer-invoices": {
+            "layout": "master",
+            "components": [],
+            "components_order": []
+        },
+        "customer-tickets": {
+            "layout": "master",
+            "components": [],
+            "components_order": []
+        },
+        "customer-ticket": {
+            "layout": "master",
+            "components": [],
+            "components_order": []
+        },
+        "customer-balance": {
+            "layout": "master",
+            "components": [],
+            "components_order": []
+        },
+        "customer-affiliate": {
+            "layout": "master",
+            "components": [],
+            "components_order": []
+        },
+        "maintenance": {
+            "layout": "master",
+            "components": [],
+            "components_order": []
+        }
+    },
+    "global": {
+        "properties": {
+            "theme_color": "#8e08ff",
+            "primary_background_color": "#060a12",
+            "secondary_background_color": "#0b1222",
+            "primary_border_color": "#94a3b826",
+            "font": "Geist",
+            "snow": false,
+            "snow_color": "#ffffff"
+        },
+        "components": {
+            "announcement": {
+                "text": null,
+                "link": null,
+                "link_text": null
+            },
+            "navbar": {
+                "show_shop_name": true,
+                "show_logo": true,
+                "left_links": [
+                    {
+                        "text": "Home",
+                        "link": "\/",
+                        "shape": "regular"
+                    },
+                    {
+                        "text": "Products",
+                        "link": "\/products",
+                        "shape": "regular"
+                    },
+                    {
+                        "text": "Discord",
+                        "link": "https://discord.gg/",
+                        "shape": "regular",
+                        "new_tab": true
+                    },
+                    {
+                        "text": "Reviews",
+                        "link": "\/feedback",
+                        "shape": "regular"
+                    },
+                    {
+                        "text": "Status",
+                        "link": "\/status",
+                        "shape": "regular"
+                    },
+                    {
+                        "text": "Blog",
+                        "link": "\/blog",
+                        "shape": "regular"
+                    }
+                ],
+                "right_links": [],
+                "hide_currency_selector": false,
+                "hide_customer_dashboard": false,
+                "hide_cart": false
+            },
+            "footer": {
+                "show_shop_name": true,
+                "show_logo": false,
+                "show_socials": true,
+                "links_title": "Navigation",
+                "links": [
+                    {
+                        "text": "Home",
+                        "link": "\/"
+                    },
+                    {
+                        "text": "Products",
+                        "link": "\/#products"
+                    },
+                    {
+                        "text": "Feedback",
+                        "link": "\/feedback"
+                    },
+                    {
+                        "text": "Status",
+                        "link": "\/status",
+                        "shape": "regular"
+                    },
+                    {
+                        "text": "Blog",
+                        "link": "\/blog"
+                    }
+                ],
+                "links_2_title": "Legal",
+                "links_2": [
+                    {
+                        "text": "Terms of Service",
+                        "link": "\/terms-of-service"
+                    },
+                    {
+                        "text": "Privacy Policy",
+                        "link": "\/privacy-policy"
+                    },
+                    {
+                        "text": "Refund Policy",
+                        "link": "\/refund-policy"
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,57 @@
+<section class="component sa-products-section" id="{{ componentId }}" data-component-id="{{ componentId }}">
+  <div class="page-container">
+    {% if properties.pill_label %}
+      <div class="sa-section-pill">{{ properties.pill_label | renderString }}</div>
+    {% endif %}
+    {% if properties.title %}
+      <h2 class="sa-section-title">{{ properties.title | renderString }}</h2>
+    {% endif %}
+    {% if properties.subtitle %}
+      <p class="sa-section-subtitle">{{ properties.subtitle | renderString }}</p>
+    {% endif %}
+
+    <div class="sa-products-grid">
+      {% if properties.ids|length == 0 %}
+        {% for product in sortedItems %}
+          {% if product.type == 'group' or not product.group_id %}
+            {% render_snippet "product-card.njk", product=product %}
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        {% for product in helpers.components.products.getItemsByIds(sortedItems, properties.ids) %}
+          {% render_snippet "product-card.njk", product=product %}
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    {% if properties.show_view_all is not defined or properties.show_view_all %}
+      <div class="sa-view-all-wrap">
+        <a href="{{ '/products' | shopUrl }}" class="sa-view-all-btn">
+          <i class="fa-solid fa-boxes-stacked"></i> View All Products
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% for product in sortedItems %}
+  {% if product.type == 'group' %}
+    <div class="modal fade" id="group-modal-{{ product.id }}" tabindex="-1" aria-labelledby="group-modal-{{ product.id }}-label" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="group-modal-{{ product.id }}-label">{{ product.name }} Products</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="sa-products-grid">
+              {% for product in product.products %}
+                {% render_snippet "product-card.njk", product=product %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endfor %}

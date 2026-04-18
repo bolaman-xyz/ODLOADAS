@@ -1,0 +1,39 @@
+<section class="py-20 text-block alignment-{{ properties.alignment }} bg-block-{{ properties.background }} component" data-component-id="{{ componentId }}">
+  <div class="container">
+<div class="relative z-10 flex items-center justify-between">
+  <div>
+    <h2 class="text-white font-bold m-0 mb-4 text-3xl md:text-4xl lg:text-5xl tracking-tight">
+      Customer <span class="relative inline-block" style="color: #8e08ff; text-shadow: rgba(255, 0, 255, 0.4) 0px 0px 40px;">Feedback</span>
+    </h2>
+    <p class="text-text-secondary text-lg max-w-[920px] mb-8 leading-relaxed">
+      Real reviews from our Discord community members. Listen to what our customers have to say about us.
+    </p>
+  </div>
+  
+  <div class="flex gap-1.5 ml-8">
+    <svg class="w-5 h-5 md:w-6 md:h-6" fill="#8e08ff" viewBox="0 0 24 24" style="filter: drop-shadow(0 0 8px rgba(255, 0, 255, 0.6));">
+      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+    </svg>
+    <svg class="w-5 h-5 md:w-6 md:h-6" fill="#8e08ff" viewBox="0 0 24 24" style="filter: drop-shadow(0 0 8px rgba(255, 0, 255, 0.6));">
+      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+    </svg>
+    <svg class="w-5 h-5 md:w-6 md:h-6" fill="#8e08ff" viewBox="0 0 24 24" style="filter: drop-shadow(0 0 8px rgba(255, 0, 255, 0.6));">
+      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+    </svg>
+    <svg class="w-5 h-5 md:w-6 md:h-6" fill="#8e08ff" viewBox="0 0 24 24" style="filter: drop-shadow(0 0 8px rgba(255, 0, 255, 0.6));">
+      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+    </svg>
+    <svg class="w-5 h-5 md:w-6 md:h-6" fill="#8e08ff" viewBox="0 0 24 24" style="filter: drop-shadow(0 0 8px rgba(255, 0, 255, 0.6));">
+      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+    </svg>
+  </div>
+</div>
+    <div class="row">
+      {% for feedback in feedbacks.slice(0, properties.amount) %}
+      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+        {% render_snippet "feedback-card.njk", feedback=feedback %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>

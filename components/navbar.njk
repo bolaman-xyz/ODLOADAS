@@ -1,0 +1,45 @@
+<div class="sa-navbar fixed top-0 z-50 w-full">
+  <div class="page-container d-flex h-100 align-items-center justify-content-between px-3" style="height:70px;">
+    <div class="d-flex align-items-center gap-3">
+      <a href="{{ '/' | shopUrl }}" class="d-flex align-items-center gap-2 text-decoration-none">
+        {% if shop.image_url %}
+          <img src="{{ shop.image_url }}" alt="{{ shop.name }}" class="sa-navbar-logo" />
+        {% else %}
+          <div class="sa-navbar-logo sa-navbar-logo-fallback"></div>
+        {% endif %}
+        <div class="sa-navbar-brand"><span>{{ shop.name }}</span></div>
+      </a>
+
+      <div class="sa-navbar-links d-none d-sm-flex">
+        <a href="{{ '/' | shopUrl }}" class="sa-nav-btn">Home</a>
+        <a href="{{ '/products' | shopUrl }}" class="sa-nav-btn">Products</a>
+        <a href="{{ '/feedback' | shopUrl }}" class="sa-nav-btn">Reviews</a>
+        <a href="{{ '/status' | shopUrl }}" class="sa-nav-btn">Status</a>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ '/cart' | shopUrl }}" class="sa-icon-btn" aria-label="Open cart">
+        <i class="fa-solid fa-cart-shopping"></i>
+      </a>
+
+      {% if not global.components.navbar.hide_customer_dashboard %}
+        {% if shop_customer %}
+          <a href="{{ '/customer/dashboard' | shopUrl }}" class="sa-primary-btn">Dashboard</a>
+        {% else %}
+          <button type="button" data-bs-toggle="modal" data-bs-target="#customer-login-modal" class="sa-primary-btn">Dashboard</button>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const navbar = document.querySelector('.sa-navbar');
+    if (!navbar) return;
+    window.addEventListener('scroll', () => {
+      navbar.classList.toggle('navbar-scrolled', window.scrollY > 10);
+    });
+  })();
+</script>

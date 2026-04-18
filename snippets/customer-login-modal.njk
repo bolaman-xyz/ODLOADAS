@@ -1,0 +1,147 @@
+<div class="modal fade" id="customer-login-modal" tabindex="-1" aria-labelledby="customer-login-modal-label" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background: rgba(16, 16, 16, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 0, 255, 0.3); border-radius: 16px;">
+      <div class="modal-header" style="border-bottom: 1px solid rgba(255, 0, 255, 0.2); padding: 1.5rem;">
+        <h5 class="modal-title" id="customer-login-modal-label" style="color: #ffffff; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem;">
+          <i class="fas fa-user-circle" style="color: #ff00ff;"></i>
+          Log in to Your Customer Account
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1); opacity: 0.8;"></button>
+      </div>
+      <div class="modal-body" style="padding: 2rem;">
+        <div x-show="appCustomer.modalStep === 1">
+          <form @submit.prevent="appCustomer.modalRequestOtp()">
+            <div class="mb-1">
+              <label class="mb-0 form-label" style="color: #ffffff; font-weight: 500; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-envelope" style="color: #ff00ff;"></i>
+                E-mail Address
+              </label>
+              <small class="d-block form-text" style="color: rgba(255, 255, 255, 0.6); margin-top: 0.25rem; margin-left: 1.75rem;">
+                We'll send you a one-time password to this email address.
+              </small>
+            </div>
+            <div class="mt-2">
+              <input 
+                type="email"
+                x-model="appCustomer.modalEmail"
+                x-ref="appCustomer.modalEmailInput"
+                placeholder="name@domain.com"
+                class="form-control"
+                style="background: rgba(30, 30, 45, 0.6); border: 1px solid rgba(255, 0, 255, 0.3); color: #ffffff; padding: 0.75rem 1rem; border-radius: 8px; transition: all 0.3s ease;"
+                onfocus="this.style.borderColor='#ff00ff';"
+                onblur="this.style.borderColor='rgba(255, 0, 255, 0.3)';"
+              />
+            </div>
+
+            {% if altcha_shop_customer %}
+              <div
+                x-cloak
+                x-show="!appCustomer.altchaPayload"
+                class="transition-opacity mt-2"
+                x-transition:enter="transition ease-out duration-300 transform"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-200 transform"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+              >
+                <altcha-widget
+                  challengejson='{{ altcha_shop_customer | json }}'
+                  auto="onload"
+                  hidefooter="true"
+                  hidelogo="true"
+                  x-ref="appCustomer.altcha"
+                ></altcha-widget>
+              </div>
+            {% endif %}
+
+            <p x-show="appCustomer.modalEmailError" class="form-text text-danger" x-text="appCustomer.modalEmailError" style="color: #ff4444 !important; margin-top: 0.5rem;"></p>
+            <button 
+              type="submit"
+              class="btn btn-primary mt-3 w-100"
+              :disabled="appCustomer.modalLoading"
+              style="background: #ff00ff; border: none; padding: 0.875rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.3s ease; color: #ffffff;"
+              onmouseover="this.style.background='#e600e6';"
+              onmouseout="this.style.background='#ff00ff';"
+            >
+              <span>Continue</span>
+              <template x-if="!appCustomer.modalLoading">
+                <i class="fas fa-arrow-right"></i>
+              </template>
+              <template x-if="appCustomer.modalLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+              </template>
+            </button>
+          </form>
+        </div>
+
+        <div x-show="appCustomer.modalStep === 2">
+          <form @submit.prevent="appCustomer.modalLogin()">
+            <div class="mb-1">
+              <label class="mb-0 form-label" style="color: #ffffff; font-weight: 500; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-key" style="color: #ff00ff;"></i>
+                One Time Password
+              </label>
+              <small class="d-block form-text" style="color: rgba(255, 255, 255, 0.6); margin-top: 0.25rem; margin-left: 1.75rem;">
+                A 6-digit code has been sent to <span x-text="appCustomer.modalEmail" style="color: #ff00ff; font-weight: 500;"></span>.
+              </small>
+            </div>
+            <div class="d-flex gap-2 mt-2" style="gap: 0.5rem;">
+              {% for index in range(6) %}
+                <input 
+                  type="text"
+                  maxlength="1"
+                  x-model="appCustomer.modalOtpDigits[{{ index }}]"
+                  x-ref="appCustomer.modalOtpInputs[{{ index }}]"
+                  @input="appCustomer.modalOtpHandleInput({{ index }})"
+                  @keydown="appCustomer.modalOtpHandleKeyDown({{ index }}, $event)"
+                  class="form-control text-center"
+                  style="width: 2.5rem; height: 3rem; font-size: 1.25rem; background: rgba(30, 30, 45, 0.6); border: 1px solid rgba(255, 0, 255, 0.3); color: #ffffff; border-radius: 8px; font-weight: 600; transition: all 0.3s ease;"
+                  onfocus="this.style.borderColor='#ff00ff'; this.style.background='rgba(30, 30, 45, 0.8)';"
+                  onblur="this.style.borderColor='rgba(255, 0, 255, 0.3)'; this.style.background='rgba(30, 30, 45, 0.6)';"
+                />
+              {% endfor %}
+            </div>
+            <p x-show="appCustomer.modalOtpError" class="form-text text-danger" x-text="appCustomer.modalOtpError" style="color: #ff4444 !important; margin-top: 0.5rem;"></p>
+            <button 
+              type="submit"
+              class="btn btn-primary mt-3 w-100"
+              :disabled="appCustomer.modalLoading"
+              style="background: #ff00ff; border: none; padding: 0.875rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.3s ease; color: #ffffff;"
+              onmouseover="this.style.background='#e600e6';"
+              onmouseout="this.style.background='#ff00ff';"
+            >
+              <span>Log In</span>
+              <template x-if="!appCustomer.modalLoading">
+                <i class="fas fa-sign-in-alt"></i>
+              </template>
+              <template x-if="appCustomer.modalLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+              </template>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+#customer-login-modal input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+#customer-login-modal input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#customer-login-modal button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#customer-login-modal .modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+</style>

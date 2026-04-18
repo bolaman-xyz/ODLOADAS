@@ -1,0 +1,1259 @@
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('productForm', () => ({
+      product: {{ product | json }},
+      productAddons: {{ productAddons | json }},
+      activeVariant: 0,
+      quantity: {{ product.quantity_min or 1 }},
+      isEmbed: {{ 'true' if is_embed else 'false' }},
+      addingToCart: false,
+      addedToCart: false,
+      buyingNow: false,
+      buyNowError: null,
+      buyNowDisabled: false,
+      altchaPayload: null,
+
+      get variant() {
+        return this.product.variants[this.activeVariant];
+      },
+
+      init: function () {
+        for (let i = 0; i < this.product.variants.length; i++) {
+          if (this.product.variants[i].stock !== 0) {
+            this.activeVariant = i;
+            break;
+          }
+        }
+
+        if (!this.activeVariant) {
+          this.activeVariant = 0;
+        }
+
+        if (this.variant.quantity_min) {
+          this.quantity = this.variant.quantity_min;
+        }
+
+        this.$watch('activeVariant', () => {
+          this.quantity = this.product.quantity_min || 1;
+
+          if (this.variant.quantity_min) {
+            this.quantity = this.variant.quantity_min;
+          }
+
+          this.addedToCart = false;
+        });
+
+        this.$watch('quantity', () => {
+          this.addedToCart = false;
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        if (urlParams.has('quantity')) {
+          this.quantity = parseInt(urlParams.get('quantity'));
+        }
+
+        if (urlParams.has('variant')) {
+          const variantIndex = this.product.variants.findIndex(variant => variant.name === urlParams.get('variant'));
+          if (variantIndex !== -1) {
+            this.activeVariant = variantIndex;
+          }
+        }
+
+        {% if altcha and not properties.hide_buy_now %}
+          this.addAltchaEventListener();
+        {% endif %}
+      },
+
+      get totalPrice() {
+        let price = this.variant.price * this.quantity;
+        let priceBeforeDiscounts = price;
+
+        if (this.product.volume_discounts) {
+          const volumeDiscounts = this.product.volume_discounts.sort((a, b) => b.quantity - a.quantity);
+
+          for (const volumeDiscount of volumeDiscounts) {
+            if (this.quantity >= parseInt(volumeDiscount.quantity)) {
+              price = price - (priceBeforeDiscounts * parseInt(volumeDiscount.percentage) / 100);
+              break;
+            }
+          }
+        }
+
+        if (this.appCart.items.length > 0) {
+          for (const item of this.appCart.items) {
+            if (item.parentVariantId === this.variant.id) {
+              const addonVariant = this.productAddons.find(addon => addon.id === item.productId && addon.variants.some(variant => variant.id === item.variantId));
+              if (addonVariant) {
+                const addonPrice = addonVariant.variants.find(variant => variant.id === item.variantId).price;
+                price += addonPrice * item.quantity;
+              }
+            }
+          }
+        }
+
+        if (price < 0) {
+          price = 0;
+        }
+        const formattedPrice = price.toFixed(2);
+
+        return formattedPrice;
+      },
+
+      get outOfStock() {
+        if (this.variant) {
+          if (this.variant.stock === 0) {
+            return true;
+          }
+
+          if (this.variant.quantity_min > 0 && this.variant.stock !== -1 && !this.product.hide_stock_count && this.variant.stock < this.variant.quantity_min) {
+            return true;
+          }
+        }
+
+        return false;
+      },
+
+      get minQuantity() {
+        const min = this.variant.quantity_min || 1;
+
+        if (this.variant.stock === 0) {
+          return 0;
+        }
+
+        return min;
+      },
+
+      get maxQuantity() {
+        const max = this.variant.quantity_max || 10000;
+
+        if (this.variant.stock === 0) {
+          return 0;
+        }
+
+        if (this.product.hide_stock_count) {
+          return max;
+        }
+
+        if (this.variant.stock === -1) {
+          return max;
+        }
+
+        return Math.min(max, this.variant.stock);
+      },
+
+      changeQuantity: function (quantity) {
+        const min = this.minQuantity;
+        const max = this.maxQuantity;
+        const newQuantity = Math.min(Math.max(min, quantity), max);
+
+        this.quantity = newQuantity;
+      },
+
+      get cartLimitReached() {
+        return this.appCart.items.length >= {{ shop.max_cart_limit }};
+      },
+
+      addToCart: function () {
+        if (this.addedToCart) {
+          window.location.href = '{{ '/cart' | shopUrl }}';
+          return;
+        }
+
+        this.addingToCart = true;
+
+        const productId = this.product.id;
+        const variantId = this.variant.id;
+        const quantity = this.quantity;
+
+        this.appCart.add(productId, variantId, quantity);
+
+        setTimeout(() => {
+          this.addedToCart = true;
+          this.addingToCart = false;
+        }, 1000);
+      },
+
+      addAltchaEventListener: function () {
+        if (this.$refs.altcha) {
+          this.$refs.altcha.addEventListener('statechange', (event) => {
+            if (event.detail.state === 'verifying') {
+              this.buyNowDisabled = true;
+            } else if (event.detail.state === 'verified') {
+              this.buyNowDisabled = false;
+              this.altchaPayload = event.detail.payload;
+            } else if (event.detail.state === 'error') {
+              this.buyNowDisabled = false;
+              this.buyNowError = 'Captcha verification failed. Please refresh the page and try again.';
+            }
+          });
+        }
+      },
+
+      buyNow: async function () {
+        if (this.buyingNow) {
+          return;
+        }
+
+        // Clear any previous errors
+        this.buyNowError = null;
+
+        const buyNowCart = [{
+          productId: this.product.id,
+          variantId: this.variant.id,
+          quantity: this.quantity,
+        }];
+
+        if (this.appCart.items.length > 0) {
+          for (const item of this.appCart.items) {
+            if (item.parentVariantId === this.variant.id) {
+              buyNowCart.push({
+                productId: item.productId,
+                variantId: item.variantId,
+                parentVariantId: item.parentVariantId,
+                quantity: item.quantity,
+              });
+            }
+          }
+        }
+
+        const formData = {
+          cart: buyNowCart,
+          currency: this.appCurrency.currency,
+          shopId: '{{ shop.id }}',
+        };
+
+        if (window.shopCustomer?.email) {
+          formData.email = window.shopCustomer.email;
+        }
+
+        {% if altcha %}
+          if (!this.altchaPayload) {
+            this.buyNowError = 'Please wait for captcha verification to complete.';
+            return;
+          }
+          formData.altcha = this.altchaPayload;
+        {% endif %}
+
+        try {
+          this.buyingNow = true;
+
+          const response = await fetch('{{ '/v1/checkout' | apiInternalUrl }}', {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          });
+
+          const responseData = await response.json();
+
+          if (responseData.url) {
+            this.checkoutUrl = responseData.url;
+
+            if (this.isEmbed) {
+              window.open(this.checkoutUrl, '_blank');
+              this.isLoadingModalOpen = true;
+            } else {
+              window.location.href = this.checkoutUrl;
+            }
+          } else {
+            this.buyingNow = false;
+            this.buyNowError = responseData?.message || 'Error in the AJAX request.';
+          }
+        } catch (error) {
+          console.error(error);
+          this.buyingNow = false;
+          this.buyNowError = 'Unexpected error. Please refresh the page and try again.';
+        }
+      }
+    }));
+  });
+</script>
+
+<style>
+.product-main-container {
+  background: rgba(41, 41, 41, 0.6) !important;
+  border: 2px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.carousel {
+  position: relative;
+}
+
+.carousel-inner {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  border: 2px solid rgba(200, 200, 200, 0.3);
+  aspect-ratio: 16/9;
+  max-height: 700px;
+  position: relative;
+}
+
+.carousel-item {
+  height: 100%;
+  width: 100%;
+  display: none;
+  position: relative;
+}
+
+.carousel-item.active {
+  display: block;
+}
+
+.carousel-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.carousel-fade .carousel-item {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.carousel-fade .carousel-item.active {
+  opacity: 1;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  opacity: 1;
+}
+
+.carousel-control-prev:hover,
+.carousel-control-next:hover {
+  background: rgba(142, 0, 255, 0.8);
+  border-color: #8e08ff;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-control-prev {
+  left: 1rem;
+}
+
+.carousel-control-next {
+  right: 1rem;
+}
+
+.carousel-control-prev svg,
+.carousel-control-next svg {
+  width: 20px;
+  height: 20px;
+}
+
+.carousel-fade .carousel-item {
+  opacity: 0;
+  transition: none; 
+  display: block; 
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.carousel-fade .carousel-item.active {
+  opacity: 1;
+  position: relative;
+}
+
+.carousel-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+.carousel {
+  position: relative;
+}
+
+.carousel-inner {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  border: 2px solid rgba(200, 200, 200, 0.3);
+  aspect-ratio: 16/9;
+  max-height: 700px;
+  position: relative;
+}
+
+.thumbnails {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  margin-top: 10px !important;
+}
+
+.thumbnail-btn {
+  border: 2px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  padding: 0 !important;
+  transition: all 0.3s ease !important;
+  cursor: pointer !important;
+  width: 90px !important;
+  height: 51px !important;
+  margin: 0 !important;
+}
+
+.thumbnail-btn:hover {
+  border-color: rgba(255, 0, 255, 0.5) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.thumbnail-btn.active {
+  border-color: #8e08ff !important;
+  box-shadow: 0 0 0 2px rgba(142, 0, 255, 0.3) !important;
+}
+
+.thumbnail-btn img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.display-6 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.pricing-section .price h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.status-badge .flex-shrink-0 {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-badge .flex-shrink-0 svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.status-badge .text-sm {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 10;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.status-badge .absolute.block {
+  position: absolute;
+  display: block;
+}
+
+.badges .product-badge {
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  border: none !important;
+}
+
+.badges .product-badge i {
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.product-variants-horizontal .variant-option {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 2px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.3s ease;
+  min-height: 65px;
+  border-radius: 10px;
+  padding: 0.5rem !important;
+}
+
+.product-variants-horizontal .variant-option:hover {
+  border-color: rgba(255, 0, 255, 0.5) !important;
+  transform: translateY(-2px);
+}
+
+.product-variants-horizontal .variant-option.bg-primary {
+  background: rgba(255, 0, 255, 0.2) !important;
+  border-color: #8e08ff !important;
+}
+
+.product-variants-horizontal .variant-option h6 {
+  color: #e5e7eb;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.product-variants-horizontal .variant-option .price {
+  color: #e5e7eb;
+  font-size: 0.95rem;
+}
+
+.product-variants-horizontal .variant-option small {
+  font-size: 0.7rem;
+  color: #8e08ff !important;
+}
+
+.product-variants-horizontal .variant-option .text-muted {
+  color: #8e08ff !important;
+}
+
+.input-group {
+  background: transparent;
+  border-radius: 8px;
+  overflow: visible;
+  max-width: 200px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.input-group .btn {
+  background: #8e08ff;
+  border: none;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.input-group .btn:hover:not(:disabled) {
+  background: #8e08ff;
+  transform: translateY(-2px);
+}
+
+.input-group .btn:disabled {
+  background: rgba(255, 0, 255, 0.3);
+  cursor: not-allowed;
+}
+
+.input-group .btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.input-group .form-control {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  text-align: center;
+  width: 60px;
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.buy-buttons .btn {
+  height: 48px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.buy-buttons .btn-primary {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: #e5e7eb;
+}
+
+.buy-buttons .btn-primary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.buy-buttons .btn-outline-primary {
+  background: #8e08ff;
+  border: 2px solid #8e08ff;
+  color: white;
+}
+
+.buy-buttons .btn-outline-primary:hover:not(:disabled) {
+  background: #8e08ff;
+  border-color: #8e08ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 0, 255, 0.4);
+}
+
+.description-container {
+  background: rgba(41, 41, 41, 0.6) !important;
+  border: 2px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.description-card {
+  background: rgba(41, 41, 41, 0.6) !important;
+  border: 2px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px;
+}
+
+.tabs-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.description-card h5 {
+  color: #e5e7eb;
+  font-weight: 600;
+}
+
+.description-card .editor,
+.description-container .editor {
+  color: rgba(229, 231, 235, 0.8);
+}
+
+.description-card h5 {
+  color: #e5e7eb;
+  font-weight: 600;
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 1rem;
+}
+
+.description-card h5::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 100%;
+  background: #8e08ff;
+  border-radius: 2px;
+}
+
+.description-container h4 {
+  position: relative;
+  padding-left: 20px;
+}
+
+.description-container h4::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 100%;
+  background: #8e08ff;
+  border-radius: 2px;
+}
+
+.editor ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.editor li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: rgba(229, 231, 235, 0.8);
+  position: relative;
+  padding-left: 30px;
+}
+
+.editor li::before {
+  display: none; 
+}
+
+.editor li .check-icon {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  flex-shrink: 0;
+  stroke: #8e08ff;
+}
+
+.editor ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.editor li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: rgba(229, 231, 235, 0.8);
+}
+
+.editor li::before {
+  content: "✓";
+  color: #8e08ff;
+  font-weight: bold;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.live-stats {
+  font-size: 0.875rem;
+  color: rgba(229, 231, 235, 0.7);
+}
+
+.live-stats svg {
+  color: #8e08ff;
+}
+
+.notification-container {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 9999;
+}
+
+.notification-popup {
+  background: #1a1f2e;
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.notification-image-container {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.notification-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.notification-text-primary {
+  font-size: 0.875rem;
+  color: rgba(229, 231, 235, 0.7);
+}
+
+.notification-text-secondary {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.notification-text-tertiary {
+  font-size: 0.75rem;
+  color: rgba(229, 231, 235, 0.5);
+}
+
+@media (max-width: 768px) {
+  .carousel-item img {
+    max-height: 300px;
+  }
+
+  .display-6 {
+    font-size: 1.5rem;
+  }
+
+  .pricing-section .price h3 {
+    font-size: 2rem;
+  }
+}
+
+[x-cloak] {
+  display: none !important;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+</style>
+
+<div class="product-wrapper component" data-component-id="{{ componentId }}">
+  <div class="container-fluid" style="max-width: 1650px; margin: 0 auto;">
+    <section class="py-5-nav">
+      <div class="container-fluid px-4 px-lg-5 my-5" style="max-width: 1650px; margin: 0 auto;">
+
+        <div class="row gx-4 gx-lg-5 mb-5">
+          <div class="col-lg-12">
+            <div class="product-main-container p-4">
+              <div class="row gx-4 gx-lg-5">
+
+                <div class="col-lg-6">
+                  {% if product.image_urls|length > 0 %}
+                  <div class="carousel slide carousel-fade mb-3" id="productImageCarousel" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                      {% for image in product.image_urls %}
+                      <div class="carousel-item {{ 'active' if loop.first }}">
+                        <img src="{{ image }}" class="d-block w-100" alt="{{ product.name }}" />
+                      </div>
+                      {% endfor %}
+                    </div>
+
+                    {% if product.image_urls|length > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#productImageCarousel" data-bs-slide="prev">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m15 18-6-6 6-6"></path>
+                      </svg>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#productImageCarousel" data-bs-slide="next">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m9 18 6-6-6-6"></path>
+                      </svg>
+                    </button>
+                    {% endif %}
+
+                    {% if product.image_urls|length > 1 %}
+                    <div class="thumbnails">
+                      {% for image in product.image_urls %}
+                      <button
+                        type="button"
+                        data-bs-target="#productImageCarousel"
+                        data-bs-slide-to="{{ loop.index0 }}"
+                        class="thumbnail-btn {{ 'active' if loop.first }}"
+                      >
+                        <img src="{{ image }}" alt="Thumbnail {{ loop.index }}" />
+                      </button>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                  </div>
+                  {% elif product.image_url %}
+                  <img src="{{ product.image_url }}" class="card-img-top mb-3" alt="{{ product.name }}" />
+                  {% else %}
+                  <div class="card-img-top product-img-placeholder text-center mb-3 d-flex align-items-center justify-content-center" style="height: 400px; background: rgba(255,255,255,0.05); border-radius: 12px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 256 256" style="opacity: 0.3;">
+                      <path fill="currentColor" d="m222.72 67.91l-88-48.18a13.9 13.9 0 0 0-13.44 0l-88 48.18A14 14 0 0 0 26 80.18v95.64a14 14 0 0 0 7.28 12.27l88 48.18a13.92 13.92 0 0 0 13.44 0l88-48.18a14 14 0 0 0 7.28-12.27V80.18a14 14 0 0 0-7.28-12.27Z"/>
+                    </svg>
+                  </div>
+                  {% endif %}
+                </div>
+
+                <div class="col-lg-6">
+                  <div x-data="productForm">
+
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                      <h1 class="display-6 fw-bolder mb-0">{{ product.name }}</h1>
+                      <div class="pricing-section">
+                        <div class="price">
+                          <h3 class="mb-0" x-text="appCurrency.format(totalPrice, '{{ product.currency }}')"></h3>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+{% if product.status_color or product.status_text %}
+<div class="status-badge relative inline-flex items-center gap-2 px-3 py-2 rounded-md overflow-hidden" 
+     style="color: {{ product.status_color }}; border-left: 2px solid {{ product.status_color }}; background: {{ product.status_color }}20;">
+  <span class="flex-shrink-0 relative z-10 d-flex align-items-center justify-content-center" style="width: 20px; height: 20px;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style="display: block;">
+      <path d="M320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576zM320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320C528 205.1 434.9 112 320 112zM390.7 233.9C398.5 223.2 413.5 220.8 424.2 228.6C434.9 236.4 437.3 251.4 429.5 262.1L307.4 430.1C303.3 435.8 296.9 439.4 289.9 439.9C282.9 440.4 276 437.9 271.1 433L215.2 377.1C205.8 367.7 205.8 352.5 215.2 343.2C224.6 333.9 239.8 333.8 249.1 343.2L285.1 379.2L390.7 234z"></path>
+    </svg>
+  </span>
+  <span class="text-sm font-semibold uppercase relative z-10 d-flex align-items-center" style="font-size: 0.75rem; line-height: 1;">
+    {{ product.status_text }}
+  </span>
+  <span class="absolute block" style="right: -10px; opacity: 0.20; transform: rotate(-20deg); width: 36px; height: 36px; color: {{ product.status_color }};">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor">
+      <path d="M320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576zM320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320C528 205.1 434.9 112 320 112zM390.7 233.9C398.5 223.2 413.5 220.8 424.2 228.6C434.9 236.4 437.3 251.4 429.5 262.1L307.4 430.1C303.3 435.8 296.9 439.4 289.9 439.9C282.9 440.4 276 437.9 271.1 433L215.2 377.1C205.8 367.7 205.8 352.5 215.2 343.2C224.6 333.9 239.8 333.8 249.1 343.2L285.1 379.2L390.7 234z"></path>
+    </svg>
+  </span>
+</div>
+{% endif %}
+
+{% if product.product_badges.page|length > 0 %}
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+  {% for productBadge in product.product_badges.page %}
+  <span style="position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: white; line-height: 1; white-space: nowrap; overflow: hidden; background-color: {{ productBadge.color or '#8e08ff' }};">
+    {% if productBadge.icon %}
+    <span style="width: 20px; height: 20px; flex-shrink: 0; position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #8e08ff 0%, #8e08ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+      <i class="{{ productBadge.icon }}" style="font-size: 1rem; line-height: 1;"></i>
+    </span>
+    {% endif %}
+    <span style="position: relative; z-index: 10; line-height: 1;">{{ productBadge.label }}</span>
+  </span>
+  {% endfor %}
+</div>
+{% endif %}
+                    </div>
+                    {% if 'sales' in liveStats or 'views' in liveStats %}
+                    <div class="live-stats mb-4">
+                      {% if 'views' in liveStats %}
+                      <div class="d-flex align-items-center gap-2 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z"></path></svg>
+                        <small><strong>{{ liveStats.views }}</strong> {{ 'person is' if liveStats.views == 1 else 'people are' }} currently viewing</small>
+                      </div>
+                      {% endif %}
+                      {% if 'sales' in liveStats %}
+                      <div class="d-flex align-items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M230.14,58.87A8,8,0,0,0,224,56H62.68L56.6,22.57A8,8,0,0,0,48.73,16H24a8,8,0,0,0,0,16h18L67.56,172.29a24,24,0,0,0,5.33,11.27,28,28,0,1,0,44.4,8.44h45.42A27.75,27.75,0,0,0,160,204a28,28,0,1,0,28-28H91.17a8,8,0,0,1-7.87-6.57L80.13,152h116a24,24,0,0,0,23.61-19.71l12.16-66.86A8,8,0,0,0,230.14,58.87Z"></path></svg>
+                        <small><strong>{{ liveStats.sales }}</strong> {{ 'person has' if liveStats.sales == 1 else 'people have' }} purchased</small>
+                      </div>
+                      {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <form @submit.prevent="buyNow">
+
+                      <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                          <label for="quantity" class="form-label mb-0" style="color: #e5e7eb; font-weight: 500;">Quantity</label>
+                          <div class="input-group">
+                            <button
+                              @click="changeQuantity(quantity - 1)"
+                              type="button"
+                              class="btn"
+                              :disabled="outOfStock || quantity <= minQuantity"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/>
+                              </svg>
+                            </button>
+                            <input
+                              type="number"
+                              class="form-control"
+                              name="quantity"
+                              x-model.number="quantity"
+                              :disabled="outOfStock"
+                              :min="minQuantity"
+                              :max="maxQuantity"
+                            />
+                            <button
+                              @click="changeQuantity(quantity + 1)"
+                              type="button"
+                              class="btn"
+                              :disabled="outOfStock || quantity >= maxQuantity"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      {% if product.variants.length > 1 %}
+                      <div class="mb-4">
+                        <label class="form-label" style="color: #e5e7eb; font-weight: 500;">Variant</label>
+                        <div class="product-variants-horizontal">
+                          <div class="row g-2">
+                            {% for variant in product.variants %}
+                            <div class="col-lg-6 col-md-6">
+                              <div 
+                                class="variant-option p-3 d-flex flex-column"
+                                :class="activeVariant === {{ loop.index0 }} ? 'bg-primary' : ''"
+                                @click="activeVariant = {{ loop.index0 }}"
+                                {{ 'style="opacity: 0.5; cursor: not-allowed;"' if variant.stock === 0 }}
+                              >
+                                <div class="d-flex justify-content-between align-items-start mb-2 flex-grow-1">
+                                  <h6 class="mb-0">{{ variant.name }}</h6>
+                                  <small class="text-muted text-end" style="font-size: 0.75rem;">
+                                    {% if variant.stock === 0 %}
+                                    <span class="text-danger">No stock</span>
+                                    {% elif variant.stock === -1 %}
+                                    <span style="color: #8e08ff;">In Stock</span>
+                                    {% else %}
+                                    <span style="color: #8e08ff;">Stock ({{ variant.stock }})</span>
+                                    {% endif %}
+                                  </small>
+                                </div>
+                                <div class="mt-auto">
+                                  <div class="price fw-bold">
+                                    ${{ variant.price }}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            {% endfor %}
+                          </div>
+                        </div>
+                      </div>
+                      {% endif %}
+
+                      {% if altcha and not properties.hide_buy_now %}
+                      <div
+                        x-cloak
+                        x-show="!altchaPayload"
+                        class="mb-3"
+                      >
+                        <altcha-widget
+                          challengejson='{{ altcha | json }}'
+                          auto="onload"
+                          hidefooter="true"
+                          hidelogo="true"
+                          x-ref="altcha"
+                        ></altcha-widget>
+                      </div>
+                      {% endif %}
+
+                      <div x-show="buyNowError" x-cloak class="alert alert-warning mb-3" role="alert" x-text="buyNowError"></div>
+
+                      <div class="d-flex flex-column flex-lg-row gap-3 buy-buttons">
+                        {% if not properties.hide_add_to_cart %}
+                        <div class="col">
+                          <button
+                            type="button"
+                            x-on:click="addToCart"
+                            class="w-100 btn btn-primary d-flex align-items-center justify-content-center gap-2"
+                            :disabled="outOfStock || cartLimitReached || addingToCart"
+                          >
+                            <template x-if="!addingToCart && !addedToCart">
+                              <span class="d-flex align-items-center justify-content-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
+                                  <path d="M239.89,198.12l-14.26-120a16,16,0,0,0-16-14.12H176a48,48,0,0,0-96,0H46.33a16,16,0,0,0-16,14.12l-14.26,120A16,16,0,0,0,20,210.6a16.13,16.13,0,0,0,12,5.4H223.92A16.13,16.13,0,0,0,236,210.6,16,16,0,0,0,239.89,198.12ZM128,32a32,32,0,0,1,32,32H96A32,32,0,0,1,128,32Z"/>
+                                </svg>
+                                <span x-text="cartLimitReached ? 'Cart Limit' : 'Add to Cart'"></span>
+                              </span>
+                            </template>
+                            <template x-if="addingToCart">
+                              <span class="d-flex align-items-center justify-content-center gap-2">
+                                <span>Adding...</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="animate-spin" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
+                                  <path d="M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C208.19,49.64,232,87,232,128Z"/>
+                                </svg>
+                              </span>
+                            </template>
+                            <template x-if="addedToCart">
+                              <span class="d-flex align-items-center justify-content-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
+                                  <path d="M239.89,198.12l-14.26-120a16,16,0,0,0-16-14.12H176a48,48,0,0,0-96,0H46.33a16,16,0,0,0-16,14.12l-14.26,120A16,16,0,0,0,20,210.6a16.13,16.13,0,0,0,12,5.4H223.92A16.13,16.13,0,0,0,236,210.6,16,16,0,0,0,239.89,198.12ZM128,32a32,32,0,0,1,32,32H96A32,32,0,0,1,128,32Z"/>
+                                </svg>
+                                <span>View Cart</span>
+                              </span>
+                            </template>
+                          </button>
+                        </div>
+                        {% endif %}
+                        {% if not properties.hide_buy_now %}
+                        <div class="col">
+                          <button
+                            type="submit"
+                            class="w-100 btn btn-outline-primary d-flex align-items-center justify-content-center gap-2"
+                            :disabled="outOfStock || buyingNow"
+                          >
+                            <span>Buy Now</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9.575 12L5.7 8.1q-.275-.275-.288-.687T5.7 6.7q.275-.275.7-.275t.7.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.275.275-.687.288T5.7 17.3q-.275-.275-.275-.7t.275-.7zm6.6 0L12.3 8.1q-.275-.275-.288-.687T12.3 6.7q.275-.275.7-.275t.7.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.275.275-.687.288T12.3 17.3q-.275-.275-.275-.7t.275-.7z"></path>
+                            </svg>
+                          </button>
+                        </div>
+                        {% endif %}
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row gx-4 gx-lg-5 mb-4">
+          <div class="col-12">
+            <div class="description-container p-4">
+              <h4 class="mb-3" style="color: #e5e7eb;">Product Requirements</h4>
+              <div class="editor">
+                {{ product.description | safe }}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% if product.product_tabs|length > 0 %}
+        <div class="row gx-4 gx-lg-5">
+          <div class="col-12">
+            <div class="tabs-container">
+              <div class="row g-3">
+                {% for productTab in product.product_tabs %}
+                <div class="col-lg-3 col-md-6">
+                  <div class="description-card p-4 h-100">
+                    <h5 class="mb-3">{{ productTab.title }}</h5>
+                    <div class="editor">
+                      {{ productTab.content | safe }}
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% if productUpsells.length > 0 %}
+        <div class="row gx-4 gx-lg-5 mt-5">
+          <div class="col">
+            <h2 class="mb-4" style="color: #e5e7eb;">Commonly Bought Together</h2>
+            <div class="row products">
+              {% set ogProduct = product %}
+              {% for upsell in productUpsells %}
+                {% render_snippet "product-card.njk", product=upsell %}
+              {% endfor %}
+              {% set product = ogProduct %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </section>
+  </div>
+</div>
+{% if 'latestOrders' in liveStats and liveStats.latestOrders|length > 0 %}
+<link href="https://cdn.jsdelivr.net/npm/flag-icons@7.3.2/css/flag-icons.min.css" rel="stylesheet" integrity="sha256-tyPeBlnZW2qWbAF1hQiCt9qo6SOgOSymvJBum+FrrwI=" crossorigin="anonymous">
+<div x-data="salesNotifications" x-cloak class="notification-container">
+  <div x-show="show" class="notification-popup">
+    <template x-if="order">
+      <div class="notification-content">
+        {% if product.image_urls|length > 0 %}
+        <div class="notification-image-container">
+          <img src="{{ product.image_urls[0] }}" alt="{{ product.name }}" class="notification-image">
+        </div>
+        {% endif %}
+        <div class="notification-text">
+          <p class="notification-text-primary mb-1">
+            Someone
+            <template x-if="order.country_code">
+              <span>from <i :class="`flag-icon fi fi-${order.country_code.toLowerCase()}`"></i></span>
+            </template>
+            purchased
+          </p>
+          <p class="notification-text-secondary mb-1">{{ product.name }}</p>
+          <p class="notification-text-tertiary mb-0">
+            <span x-text="getTimeAgo(order.completed_at)"></span>
+          </p>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('salesNotifications', () => ({
+      displayTime: 8000,
+      initTimeMin: 2000,
+      initTimeMax: 4000,
+      nextTimeMin: 8000,
+      nextTimeMax: 12000,
+      latestOrders: {{ liveStats.latestOrders | json }},
+      show: false,
+      get order() { return this.latestOrders.length > 0 ? this.latestOrders[0] : null; },
+      getRandomInterval(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; },
+      getTimeAgo(input) {
+        const date = (input instanceof Date) ? input : new Date(input);
+        const formatter = new Intl.RelativeTimeFormat('en');
+        const ranges = { years: 3600 * 24 * 365, months: 3600 * 24 * 30, weeks: 3600 * 24 * 7, days: 3600 * 24, hours: 3600, minutes: 60, seconds: 1 };
+        const secondsElapsed = (date.getTime() - Date.now()) / 1000;
+        for (let key in ranges) {
+          if (ranges[key] < Math.abs(secondsElapsed)) {
+            const delta = secondsElapsed / ranges[key];
+            return formatter.format(Math.round(delta), key);
+          }
+        }
+        return 'just now';
+      },
+      showNotification() {
+        if (this.latestOrders.length === 0) return;
+        this.show = true;
+        setTimeout(() => {
+          this.show = false;
+          setTimeout(() => {
+            this.latestOrders.shift();
+            if (this.latestOrders.length > 0) {
+              setTimeout(() => this.showNotification(), this.getRandomInterval(this.nextTimeMin, this.nextTimeMax));
+            }
+          }, 500);
+        }, this.displayTime);
+      },
+      init() { setTimeout(() => this.showNotification(), this.getRandomInterval(this.initTimeMin, this.initTimeMax)); }
+    }));
+  });
+</script>
+{% endif %}
+
+{% if product.image_urls|length > 1 %}
+
+{% endif %}
+
+{% if altcha and not properties.hide_buy_now %}
+<script type="module" src="https://cdn.jsdelivr.net/npm/altcha@1/dist/altcha.min.js"></script>
+{% endif %}

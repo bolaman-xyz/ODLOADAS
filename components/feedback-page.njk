@@ -1,0 +1,22 @@
+<script src="https://cdn.tailwindcss.com"></script>
+<div class="container component" data-component-id="{{ componentId }}">
+  <section class="py-5-nav">
+    <div class="text-center relative z-10">
+      <h2 class="text-white font-bold m-0 mb-4 text-3xl md:text-4xl lg:text-5xl tracking-tight">
+        Customer <span class="relative inline-block" style="color: #ff00ff; text-shadow: rgba(255, 0, 255, 0.4) 0px 0px 40px;">Feedback</span>
+      </h2>
+      <p class="text-text-secondary text-lg max-w-[920px] mx-auto mb-8 leading-relaxed">
+        We provide premium game enhancement tools with instant delivery and 24/7 support. Over 70 satisfied customers trust us for quality, security, and performance.
+      </p>
+    <div class="testimonials row">
+      {% for feedback in feedbacks %}
+      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+        {% render_snippet "feedback-card.njk", feedback=feedback %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if feedbacksPaginator and feedbacksPaginator.last_page > 1 %}
+      {% render_snippet "pagination.njk", paginator=feedbacksPaginator %}
+    {% endif %}
+  </section>
+</div>

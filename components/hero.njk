@@ -1,0 +1,42 @@
+<section class="sa-hero component" id="{{ componentId }}" data-component-id="{{ componentId }}">
+  <div class="sa-hero-overlay"></div>
+  <div class="sa-hero-bgfx"></div>
+
+  {% if properties.background_image and properties.background_image != 'DEFAULT' %}
+    <img src="{{ properties.background_image | imageUrl }}" alt="" class="sa-hero-image" />
+  {% elif shop.background_image_url %}
+    <img src="{{ shop.background_image_url }}" alt="" class="sa-hero-image" />
+  {% else %}
+    <img src="{{ 'hero.jpg' | assetUrl }}" alt="" class="sa-hero-image" />
+  {% endif %}
+
+  <div class="page-container sa-hero-content">
+    {% if properties.trust_badge_text %}
+      <div class="sa-hero-pill">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>{{ properties.trust_badge_text | renderString }}</span>
+      </div>
+    {% endif %}
+
+    {% if properties.title %}
+      <h1 class="sa-hero-title">{{ properties.title | renderString }}</h1>
+    {% endif %}
+
+    {% if properties.subtitle %}
+      <p class="sa-hero-subtitle">{{ properties.subtitle | renderString }}</p>
+    {% endif %}
+
+    <div class="sa-hero-actions">
+      {% if properties.cta and properties.cta_text %}
+        <a href="{{ properties.cta | shopUrl }}" class="sa-hero-btn sa-hero-btn-primary">
+          <i class="fa-solid fa-box"></i> {{ properties.cta_text | renderString }}
+        </a>
+      {% endif %}
+      {% if properties.secondary_cta and properties.secondary_cta_text %}
+        <a href="{{ properties.secondary_cta }}" target="_blank" rel="noopener noreferrer" class="sa-hero-btn sa-hero-btn-ghost">
+          <i class="fa-brands fa-discord"></i> {{ properties.secondary_cta_text | renderString }}
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</section>
